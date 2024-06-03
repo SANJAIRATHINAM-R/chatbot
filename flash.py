@@ -7,8 +7,8 @@ from bs4 import BeautifulSoup
 BING_API_KEY = "YOUR_BING_API_KEY"
 
 class ChatbotAppWithWikiSearch(tk.Tk):
-    def __init__(self):
-        super().__init__()
+    def _init_(self):
+        super()._init_()
 
         self.conversation = {
             "hi|hello": ["Hello!", "Hi there!", "How can I assist you today?"],
@@ -19,7 +19,19 @@ class ChatbotAppWithWikiSearch(tk.Tk):
                 "Here's one: Why don't scientists trust atoms? Because they make up everything!"
             ],
             "search": ["I can search the web for you. Just type 'search' followed by your query."],
-            "wiki": ["I can also provide information from Wikipedia. Just type 'wiki' followed by your query."]
+            "wiki": ["I can also provide information from Wikipedia. Just type 'wiki' followed by your query."],
+            "what is the weather like": ["I'm unable to check the weather right now, but you can use a weather service."],
+            "what can you do": ["I can chat with you, tell jokes, and provide information from the web and Wikipedia."],
+            "thank you|thanks": ["You're welcome!", "No problem!", "Anytime!"],
+            "goodbye|bye": ["Goodbye!", "See you later!", "Take care!"],
+            "who created you|who made you": ["I was created by a developer using Python and some libraries like Tkinter."],
+            "how old are you": ["I don't have an age, but I've been around as long as I've been running on this machine."],
+            "tell me a fact|fact": [
+                "Did you know? Honey never spoils.",
+                "Here’s a fact: The Eiffel Tower can be 15 cm taller during the summer."
+            ],
+            "what is your favorite color": ["I don't have preferences, but I think blue is a calming color."],
+            "do you like music|what music do you like": ["I don't listen to music, but I can help you find some information about it!"]
         }
 
         self.context = {}
@@ -27,10 +39,10 @@ class ChatbotAppWithWikiSearch(tk.Tk):
 
         self.title("Flash ")
 
-        self.chat_area = tk.Text(self, wrap=tk.WORD, width=40, height=10)
+        self.chat_area = tk.Text(self, wrap=tk.WORD, width=60, height=20)
         self.chat_area.configure(state=tk.DISABLED)
 
-        self.user_input_field = tk.Entry(self, width=40)
+        self.user_input_field = tk.Entry(self, width=60)
         self.send_button = tk.Button(self, text="Send", command=self.on_send_button_click)
 
         self.chat_area.pack(pady=10)
@@ -40,9 +52,6 @@ class ChatbotAppWithWikiSearch(tk.Tk):
     def on_send_button_click(self):
         user_input = self.user_input_field.get()
         response = self.respond(user_input)
-
-        if "last_question" in self.context:
-            response = f"You asked: '{self.context['last_question']}'\n\nI'm not sure how to respond to that."
 
         self.chat_area.configure(state=tk.NORMAL)
         self.chat_area.insert(tk.END, f"You: {user_input}\nChatbot: {response}\n\n")
@@ -72,7 +81,8 @@ class ChatbotAppWithWikiSearch(tk.Tk):
                 response = requests.get(wikipedia_url)
                 soup = BeautifulSoup(response.text, 'html.parser')
                 paragraphs = soup.find_all('p')
-                return ' '.join([paragraph.text for paragraph in paragraphs])
+                summary = ' '.join([paragraph.text for paragraph in paragraphs[:3]])  # Take first 3 paragraphs
+                return summary if summary else "No relevant information found on Wikipedia."
         except requests.RequestException as e:
             print(f"Failed to fetch information. Request Exception: {e}")
             return f"Failed to fetch information. Request Exception: {e}"
@@ -84,8 +94,6 @@ class ChatbotAppWithWikiSearch(tk.Tk):
         for pattern, responses in self.conversation.items():
             if any(keyword in user_input.lower() for keyword in pattern.split('|')):
                 response = self.random.choice(responses)
-                if "question" in pattern:
-                    self.context["last_question"] = response
                 return response
 
         if user_input.lower().startswith("search "):
@@ -98,6 +106,6 @@ class ChatbotAppWithWikiSearch(tk.Tk):
 
         return "I'm not sure how to respond to that."
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     app = ChatbotAppWithWikiSearch()
     app.mainloop()
