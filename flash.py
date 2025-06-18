@@ -1,10 +1,11 @@
 import tkinter as tk
 import requests
 import random
- import BeautifulSoup
+from bs4 import BeautifulSoup  # Fixed: import from bs4
 
-# Replace with your actual keys
+# Replace with your actual API keys
 BING_API_KEY = "YOUR_BING_API_KEY"
+
 def new_func():
     GROQ_API_KEY = "YOUR_GROQ_API_KEY"
     return GROQ_API_KEY
@@ -15,6 +16,7 @@ class ChatbotAppWithWikiSearch(tk.Tk):
     def __init__(self):
         super().__init__()
 
+        # Conversation patterns and canned responses
         self.conversation = {
             "hi|hello": ["Hello!", "Hi there!", "How can I assist you today?"],
             "what is your name": ["My name is Flash."],
@@ -42,7 +44,9 @@ class ChatbotAppWithWikiSearch(tk.Tk):
         self.send_button.pack(pady=5)
 
     def on_send_button_click(self):
-        user_input = self.user_input_field.get()
+        user_input = self.user_input_field.get().strip()
+        if user_input == "":
+            return
         response = self.respond(user_input)
 
         self.chat_area.configure(state=tk.NORMAL)
@@ -58,8 +62,10 @@ class ChatbotAppWithWikiSearch(tk.Tk):
                 params = {'q': query, 'count': 1, 'safeSearch': 'Moderate'}
                 response = requests.get("https://api.cognitive.microsoft.com/bing/v7.0/search", headers=headers, params=params)
                 data = response.json()
-                return data['webPages']['value'][0]['snippet'] if 'webPages' in data else "No info found."
-
+                if 'webPages' in data and 'value' in data['webPages']:
+                    return data['webPages']['value'][0]['snippet']
+                else:
+                    return "No info found."
             elif source == "wiki":
                 url = f"https://en.wikipedia.org/wiki/{query.replace(' ', '_')}"
                 response = requests.get(url)
@@ -84,7 +90,12 @@ class ChatbotAppWithWikiSearch(tk.Tk):
                 "stop": None
             }
             response = requests.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers)
-            return response.json()["choices"][0]["message"]["content"]
+            response_data = response.json()
+            # Check if "choices" exists in the response
+            if "choices" in response_data:
+                return response_data["choices"][0]["message"]["content"]
+            else:
+                return f"Error from Groq AI: {response_data}"
         except Exception as e:
             return f"Error from Groq AI: {e}"
 
@@ -100,7 +111,7 @@ class ChatbotAppWithWikiSearch(tk.Tk):
         elif user_input_lower.startswith("wiki "):
             return self.fetch_web_data(user_input[5:], source="wiki")
         else:
-            # Fall back to Groq LLaMA3 AI
+            # Fallback: use Groq LLaMA3 to generate a reply
             return self.call_groq_ai(user_input)
 
 if __name__ == "__main__":
