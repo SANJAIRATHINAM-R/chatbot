@@ -1,44 +1,36 @@
 import tkinter as tk
 import requests
 import random
-from bs4 import BeautifulSoup
+ import BeautifulSoup
 
-# Use a constant for Bing API key
+# Replace with your actual keys
 BING_API_KEY = "YOUR_BING_API_KEY"
+def new_func():
+    GROQ_API_KEY = "YOUR_GROQ_API_KEY"
+    return GROQ_API_KEY
+
+GROQ_API_KEY = new_func()
 
 class ChatbotAppWithWikiSearch(tk.Tk):
-    def _init_(self):
-        super()._init_()
+    def __init__(self):
+        super().__init__()
 
         self.conversation = {
             "hi|hello": ["Hello!", "Hi there!", "How can I assist you today?"],
             "what is your name": ["My name is Flash."],
-            "how are you": ["I'm just a computer program, so I don't have feelings, but thanks for asking!"],
+            "how are you": ["I'm just a computer program, but thanks for asking!"],
             "tell me a joke|joke": [
                 "Why did the programmer go broke? Because he used up all his cache!",
-                "Here's one: Why don't scientists trust atoms? Because they make up everything!"
+                "Why don't scientists trust atoms? Because they make up everything!"
             ],
-            "search": ["I can search the web for you. Just type 'search' followed by your query."],
-            "wiki": ["I can also provide information from Wikipedia. Just type 'wiki' followed by your query."],
-            "what is the weather like": ["I'm unable to check the weather right now, but you can use a weather service."],
-            "what can you do": ["I can chat with you, tell jokes, and provide information from the web and Wikipedia."],
-            "thank you|thanks": ["You're welcome!", "No problem!", "Anytime!"],
-            "goodbye|bye": ["Goodbye!", "See you later!", "Take care!"],
-            "who created you|who made you": ["I was created by a developer using Python and some libraries like Tkinter."],
-            "how old are you": ["I don't have an age, but I've been around as long as I've been running on this machine."],
-            "tell me a fact|fact": [
-                "Did you know? Honey never spoils.",
-                "Here’s a fact: The Eiffel Tower can be 15 cm taller during the summer."
-            ],
-            "what is your favorite color": ["I don't have preferences, but I think blue is a calming color."],
-            "do you like music|what music do you like": ["I don't listen to music, but I can help you find some information about it!"]
+            "search": ["Type 'search' followed by your query."],
+            "wiki": ["Type 'wiki' followed by your query."],
+            "goodbye|bye": ["Goodbye!", "See you later!"],
+            "who created you": ["I was created by a Python developer."],
+            "fact|tell me a fact": ["Did you know? Honey never spoils.", "Bananas are berries, but strawberries are not."]
         }
 
-        self.context = {}
-        self.random = random
-
-        self.title("Flash ")
-
+        self.title("Flash - AI Chat Assistant")
         self.chat_area = tk.Text(self, wrap=tk.WORD, width=60, height=20)
         self.chat_area.configure(state=tk.DISABLED)
 
@@ -54,7 +46,7 @@ class ChatbotAppWithWikiSearch(tk.Tk):
         response = self.respond(user_input)
 
         self.chat_area.configure(state=tk.NORMAL)
-        self.chat_area.insert(tk.END, f"You: {user_input}\nChatbot: {response}\n\n")
+        self.chat_area.insert(tk.END, f"You: {user_input}\nFlash: {response}\n\n")
         self.chat_area.configure(state=tk.DISABLED)
 
         self.user_input_field.delete(0, tk.END)
@@ -62,50 +54,55 @@ class ChatbotAppWithWikiSearch(tk.Tk):
     def fetch_web_data(self, query, source):
         try:
             if source == "bing":
-                headers = {
-                    'Ocp-Apim-Subscription-Key': BING_API_KEY,
-                }
-                params = {
-                    'q': query,
-                    'count': 1,
-                    'safeSearch': 'Moderate',
-                }
+                headers = {'Ocp-Apim-Subscription-Key': BING_API_KEY}
+                params = {'q': query, 'count': 1, 'safeSearch': 'Moderate'}
                 response = requests.get("https://api.cognitive.microsoft.com/bing/v7.0/search", headers=headers, params=params)
                 data = response.json()
-                if 'webPages' in data and 'value' in data['webPages']:
-                    return data['webPages']['value'][0]['snippet']
-                else:
-                    return "No relevant information found."
+                return data['webPages']['value'][0]['snippet'] if 'webPages' in data else "No info found."
+
             elif source == "wiki":
-                wikipedia_url = f"https://en.wikipedia.org/wiki/{query.replace(' ', '_')}"
-                response = requests.get(wikipedia_url)
+                url = f"https://en.wikipedia.org/wiki/{query.replace(' ', '_')}"
+                response = requests.get(url)
                 soup = BeautifulSoup(response.text, 'html.parser')
                 paragraphs = soup.find_all('p')
-                summary = ' '.join([paragraph.text for paragraph in paragraphs[:3]])  # Take first 3 paragraphs
-                return summary if summary else "No relevant information found on Wikipedia."
-        except requests.RequestException as e:
-            print(f"Failed to fetch information. Request Exception: {e}")
-            return f"Failed to fetch information. Request Exception: {e}"
+                summary = ' '.join(p.text for p in paragraphs[:3])
+                return summary if summary else "No info found."
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            return "An unexpected error occurred."
+            return f"Error fetching data: {e}"
+
+    def call_groq_ai(self, prompt):
+        try:
+            headers = {
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "messages": [{"role": "user", "content": prompt}],
+                "model": "llama3-70b-8192",
+                "temperature": 0.7,
+                "max_tokens": 300,
+                "stop": None
+            }
+            response = requests.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers)
+            return response.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            return f"Error from Groq AI: {e}"
 
     def respond(self, user_input):
+        user_input_lower = user_input.lower()
+
         for pattern, responses in self.conversation.items():
-            if any(keyword in user_input.lower() for keyword in pattern.split('|')):
-                response = self.random.choice(responses)
-                return response
+            if any(keyword in user_input_lower for keyword in pattern.split('|')):
+                return random.choice(responses)
 
-        if user_input.lower().startswith("search "):
-            query = user_input[len("search "):]
-            return self.fetch_web_data(query, source="bing")
+        if user_input_lower.startswith("search "):
+            return self.fetch_web_data(user_input[7:], source="bing")
+        elif user_input_lower.startswith("wiki "):
+            return self.fetch_web_data(user_input[5:], source="wiki")
+        else:
+            # Fall back to Groq LLaMA3 AI
+            return self.call_groq_ai(user_input)
 
-        elif user_input.lower().startswith("wiki "):
-            query = user_input[len("wiki "):]
-            return self.fetch_web_data(query, source="wiki")
-
-        return "I'm not sure how to respond to that."
-
-if _name_ == "_main_":
+if __name__ == "__main__":
     app = ChatbotAppWithWikiSearch()
     app.mainloop()
